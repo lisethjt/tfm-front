@@ -19,13 +19,18 @@ jobs:
        - uses: actions/checkout@v4        
          if: success()
        - run: |
-          echo print the current directory show files
-          ls -la 
-          echo preparing docker build context
-          mkdir -p /tmp/dockerBuildContext
-          cp .docker/Dockerfile /tmp/dockerBuildContext/Dockerfile
-          cp requires /tmp/dockerBuildContext/requires
-          ls -la /tmp/dockerBuildContext
+           echo print the current directory show files
+           ls -la
+           echo preparing docker build context
+           mkdir -p /tmp/dockerBuildContext
+           cp .docker/Dockerfile /tmp/dockerBuildContext/Dockerfile
+           cp package.json /tmp/dockerBuildContext/package.json
+           cp package-lock.json /tmp/dockerBuildContext/package-lock.json
+           cp index.html /tmp/dockerBuildContext/index.html
+           cp vite.config.js /tmp/dockerBuildContext/vite.config.js
+           cp -r src /tmp/dockerBuildContext/src
+           cp -r public /tmp/dockerBuildContext/public
+           ls -la /tmp/dockerBuildContext
 
        - name: Upload artifact       
          uses: actions/upload-artifact@v4
@@ -67,9 +72,29 @@ jobs:
         run: |
           mkdir -p flat-build-context
           DOCKERFILE_PATH=$(find dockerBuildContext -type f -name Dockerfile | head -n 1)
-          REQUIRES_PATH=$(find dockerBuildContext -type f -name requires | head -n 1)
+          PACKAGE_JSON_PATH=$(find dockerBuildContext -type f -name package.json | head -n 1)
+          PACKAGE_LOCK_PATH=$(find dockerBuildContext -type f -name package-lock.json | head -n 1)
+          INDEX_HTML_PATH=$(find dockerBuildContext -type f -name index.html | head -n 1)
+          VITE_CONFIG_PATH=$(find dockerBuildContext -type f -name vite.config.js | head -n 1)
+          SRC_PATH=$(find dockerBuildContext -type d -name src | head -n 1)
+          PUBLIC_PATH=$(find dockerBuildContext -type d -name public | head -n 1)
+
+          if [ -z "$DOCKERFILE_PATH" ] || [ -z "$PACKAGE_JSON_PATH" ] || [ -z "$PACKAGE_LOCK_PATH" ] || [ -z "$INDEX_HTML_PATH" ] || [ -z "$VITE_CONFIG_PATH" ] || [ -z "$SRC_PATH" ]; then
+            echo "Missing required files for React Docker build context"
+            exit 1
+          fi
+
           cp "$DOCKERFILE_PATH" flat-build-context/Dockerfile
-          cp "$REQUIRES_PATH" flat-build-context/requires
+          cp "$PACKAGE_JSON_PATH" flat-build-context/package.json
+          cp "$PACKAGE_LOCK_PATH" flat-build-context/package-lock.json
+          cp "$INDEX_HTML_PATH" flat-build-context/index.html
+          cp "$VITE_CONFIG_PATH" flat-build-context/vite.config.js
+          cp -r "$SRC_PATH" flat-build-context/src
+
+          if [ -n "$PUBLIC_PATH" ]; then
+            cp -r "$PUBLIC_PATH" flat-build-context/public
+          fi
+
           ls -la flat-build-context
 
       - name: Build and push image using action
